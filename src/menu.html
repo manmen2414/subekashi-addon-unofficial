@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" type="text/css" href="menu.css">
+  <script src="menu.js"></script>
+</head>
+
+<body>
+
+  <h1>全て歌詞の所為です。Addon<span class="unofficial">Unofficial</span></h1>
+  <div id="info"></div>
+  <div id="song-wrapper" style="display: none">
+    <a id="open-sbks" target="_blank">ページで開く</a>
+    <a id="copy-sbks" href="javascript:void(0)">またはコピー</a>
+    <div id="song-title">
+      <svg id="song-title-copy" class="copy-btn" xmlns="http://www.w3.org/2000/svg" height="20px"
+        viewBox="0 -960 960 960" width="20px" fill="#e3e3e3">
+        <path
+          d="M360-240q-29.7 0-50.85-21.15Q288-282.3 288-312v-480q0-29.7 21.15-50.85Q330.3-864 360-864h384q29.7 0 50.85 21.15Q816-821.7 816-792v480q0 29.7-21.15 50.85Q773.7-240 744-240H360Zm0-72h384v-480H360v480ZM216-96q-29.7 0-50.85-21.15Q144-138.3 144-168v-552h72v552h456v72H216Zm144-216v-480 480Z" />
+      </svg>
+      <span id="song-title-text"></span>
+    </div>
+    <div id="song-tags-wrapper">タグ:
+      <span id="song-tags"></span>
+    </div>
+    <div id="song-imitate-wrapper">
+      模倣: <span id="song-imitates"></span><span id="song-imitated"></span>ています
+    </div>
+    <div id="song-lyrics-wrapper">歌詞:
+      <button id="song-lyrics-toggle"></button>
+      <div id="song-lyrics"></div>
+    </div>
+  </div>
+  <div id="regist-wrapper" style="display: none;">
+    この曲は登録されていません。
+    <button id="regist-song">この曲を登録する</button>
+  </div>
+  <div id="reload"><svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 -960 960 960" width="16px"
+      fill="#e3e3e3">
+      <path
+        d="M204-318q-22-38-33-78t-11-82q0-134 93-228t227-94h7l-64-64 56-56 160 160-160 160-56-56 64-64h-7q-100 0-170 70.5T240-478q0 26 6 51t18 49l-60 60ZM481-40 321-200l160-160 56 56-64 64h7q100 0 170-70.5T720-482q0-26-6-51t-18-49l60-60q22 38 33 78t11 82q0 134-93 228t-227 94h-7l64 64-56 56Z" />
+    </svg></div>
+</body>
+
+</html>

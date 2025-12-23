@@ -1,0 +1,25 @@
+{
+  "name": "全て歌詞の所為です。拡張機能【非公式】",
+  "subheading": "Youtubeから曲情報を閲覧・設定します",
+  "version": "1.0",
+  "manifest_version": 3,
+  "icons": {
+    "16": "assets/icon_16.png",
+    "48": "assets/icon_48.png",
+    "128": "assets/icon_128.png"
+  },
+  "action": {
+    "default_title": "全て歌詞の所為です。拡張機能メニュー",
+    "default_icon": "assets/icon_48.png",
+    "default_popup": "popup.html"
+  },
+  "host_permissions": [
+    "https://youtube.com",
+    "https://www.youtube.com",
+    "http://youtube.com",
+    "https://www.youtube.com"
+  ],
+  "permissions": [
+    "tabs"
+  ]
+}
