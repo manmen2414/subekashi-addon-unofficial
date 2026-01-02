@@ -1,5 +1,3 @@
-// const SUBEKASHI_URL = "https://lyrics.imicomweb.com";
-const SUBEKASHI_URL = "http://subekashi.localhost:8000";
 /**@param {string} css */
 const $ = (css) => document.querySelector(css);
 
