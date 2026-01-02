@@ -71,25 +71,9 @@ function displaySong(song) {
 }
 /**@param {string} url  */
 async function displayRegister(url) {
-  const middletoken =
-    /<input type="hidden" name="csrfmiddlewaretoken" value="([a-zA-Z0-9]+)">/.exec(
-      await (await fetch(`${SUBEKASHI_URL}/songs/new`)).text(),
-    )[1];
   $("#regist-wrapper").style.display = "";
   $("#regist-song").addEventListener("click", async () => {
-    const res = await fetch(`${SUBEKASHI_URL}/songs/new/?toast=auto`, {
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      referrer: `${SUBEKASHI_URL}/songs/new`,
-      // middlewaretokenは取れたがそもそもOriginが違う時点で返されるので
-      // 以降、iframeを用いて入力させるようにしてみる
-      body: `csrfmiddlewaretoken=${middletoken}&url=${url}`,
-      method: "POST",
-    });
-    const atUrl = res.headers.get("Location");
-    if (!atUrl) alert("登録に失敗しました");
-    open(atUrl, "_blank");
+    open(`${SUBEKASHI_URL}/songs/new?url=${url}`, "_blank");
   });
 }
 function noYoutube() {
