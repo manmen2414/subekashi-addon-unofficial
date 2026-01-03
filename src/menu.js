@@ -1,6 +1,11 @@
 /**@param {string} css */
 const $ = (css) => document.querySelector(css);
 
+/**@param {number} millsecond  */
+function timeout(millsecond) {
+  return new Promise((s) => setTimeout(s, millsecond));
+}
+
 /**
  * @param {string} tabUrl
  */
@@ -94,7 +99,7 @@ function copy(text) {
 /**
  * @param {string} text
  */
-function showToast(text, time = 3000) {
+async function showToast(text, time = 3000) {
   const beforeToast = $("#toast");
   if (!!beforeToast) beforeToast.remove();
   const toast = document.createElement("div");
@@ -105,18 +110,15 @@ function showToast(text, time = 3000) {
     duration: 500,
     easing: "ease",
   });
-  setTimeout(() => {
-    toast.style.top = "10px";
-  }, 450);
-  setTimeout(() => {
-    toast.animate([{ top: "10px" }, { top: "-40px" }], {
-      duration: 500,
-      easing: "ease",
-    });
-    setTimeout(() => {
-      toast.remove();
-    }, 450);
-  }, time);
+  await timeout(450);
+  toast.style.top = "10px";
+  await timeout(time);
+  toast.animate([{ top: "10px" }, { top: "-40px" }], {
+    duration: 500,
+    easing: "ease",
+  });
+  await timeout(450);
+  toast.remove();
 }
 /**
  * @param {SongJson} song
