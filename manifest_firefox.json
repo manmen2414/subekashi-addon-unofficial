@@ -2,7 +2,7 @@
   "name": "全て歌詞の所為です。拡張機能【非公式】",
   "description": "Youtubeから曲情報を閲覧・設定します",
   "version": "1.0",
-  "manifest_version": 3,
+  "manifest_version": 2,
   "icons": {
     "16": "assets/icon_16.png",
     "48": "assets/icon_48.png",
