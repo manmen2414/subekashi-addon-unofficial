@@ -13,15 +13,22 @@
     "default_icon": "assets/icon_48.png",
     "default_popup": "src/menu.html"
   },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://lyrics.imicomweb.com/*"
+      ],
+      "js": [
+        "src/subekashi-page.js"
+      ]
+    }
+  ],
   "host_permissions": [
     "https://*.youtube.com/"
   ],
-  "browser_action": {
-    "default_icon": "assets/icon_48.png",
-    "default_title": "全て歌詞の所為です。拡張機能【非公式】",
-    "default_popup": "src/menu.html"
-  },
   "permissions": [
-    "tabs"
+    "tabs",
+    "activeTab",
+    "scripting"
   ]
 }
