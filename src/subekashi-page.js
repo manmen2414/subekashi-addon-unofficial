@@ -307,7 +307,7 @@ function buttonMakeSimple(btn) {
     if (!selectedAd) return;
     const regExec = /youtu\.be\/([a-zA-Z0-9_\-]+)/.exec(selectedAd.url);
     if (!regExec) return;
-    htmlText = htmlText.replaceAll("%id%", regExec[1]);
+    htmlText = htmlText.replaceAll("%id%", escapeHTML(regExec[1]));
 
     const adObject = document.createElement("div");
     adObject.innerHTML = htmlText;
