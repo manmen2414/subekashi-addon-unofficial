@@ -23,6 +23,16 @@
       ]
     }
   ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "src/pageInject.js"
+      ],
+      "matches": [
+        "https://lyrics.imicomweb.com/*"
+      ]
+    }
+  ],
   "host_permissions": [
     "https://*.youtube.com/"
   ],

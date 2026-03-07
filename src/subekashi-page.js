@@ -4,11 +4,31 @@
  * @type {{path:string,page:()=>void}[]}
  */
 const _pageScripts = [];
+//@ts-ignore
+const runtime = chrome.runtime;
+//@ts-ignore
+var wrappedJSObject = window.wrappedJSObject;
+
 /**
- * ページに追加した関数とその名前
- * @type {{name:string,func:function}[]}
+ * ブラウザの種類
+ * @type {'firefox' | 'chrome' | 'unknown'}
  */
-const functionMessages = [];
+const browserType = (() => {
+  // Firefox独自の「Xray vision」関連オブジェクトがあるか
+  if (
+    typeof wrappedJSObject !== "undefined" ||
+    navigator.userAgent.includes("Firefox")
+  ) {
+    return "firefox";
+  }
+  // Chrome (Chromium系) は window.chrome が存在する
+  //@ts-ignore
+  if (typeof chrome !== "undefined" && !!chrome.runtime) {
+    return "chrome";
+  }
+  return "unknown";
+})();
+
 /**
  * 拡張機能ID
  * @type {string}
@@ -16,7 +36,7 @@ const functionMessages = [];
 const extensionID = (() => {
   try {
     //@ts-ignore
-    return (chrome ?? browser).runtime.id;
+    return chrome.runtime.id;
   } catch (ex) {
     return "";
   }
@@ -40,68 +60,48 @@ const escapeHTML = (str) =>
   );
 
 /**
- * ページに関数を追加する
- * @param {string} name
- * @param {function} func
- */
-function addFunctionMessage(name, func) {
-  functionMessages.push({ name, func });
-  name = name.replace(/"/g, '\\"');
-  evalFunctionAtPage(
-    `
-window["${name}"]=(...a)=>{postMessage({
-extensionId:"${extensionID}",type:"func",name:"${name}",args:[...a]
-},"*")}
-  `.replace(/\r|\n/g, ""),
-  );
-}
-
-/**
- * ページ上でJavascriptを評価する
- * ## ※正しく使わないと脆弱性となる可能性が高い
- * @param {string} str
- */
-function evalFunctionAtPage(str) {
-  const script = document.createElement("script");
-  script.innerHTML = str;
-  document.body.appendChild(script);
-  script.remove();
-}
-
-/**
- * トーストを`evalFunctionAtPage`経由で表示する\
- * `icon`,`text`ともにエスケープ処理がされているため基本安全
+ * トーストを表示する
  * @param {"error" | "info" | "ok" | "warning"} icon
  * @param {string} text
  */
 function showToast(icon, text) {
   const escapedIcon = icon.replace(/"/g, `\\"`),
     escapedText = text.replace(/"/g, `\\"`);
-  evalFunctionAtPage(`showToast("${escapedIcon}","${escapedText}")`);
+  const args = [escapedIcon, escapedText];
+  if (browserType === "firefox") {
+    //@ts-ignore
+    const clonedArgs = cloneInto(args, window);
+    wrappedJSObject.showToast(...clonedArgs);
+  } else {
+    const event = new CustomEvent(`subekashi-addon-unofficial-showToast`, {
+      detail: args,
+    });
+    window.dispatchEvent(event);
+  }
 }
+
+// ページ側のスプリクトを使えるようにする(Firefoxは別の方法で用いる)
+(() => {
+  if (browserType !== "firefox") {
+    const injectsrc = runtime.getURL("src/pageInject.js");
+    const script = document.createElement("script");
+    script.src = injectsrc;
+    document.head.appendChild(script);
+  }
+})();
 
 /**
- * ページから送られて来た関数実行リクエストを解釈して実行する
- * @param {{extensionId:string,name:string,args:any[],type:"func"}} content
+ * アイコンだけのボタンを作る用に、ボタンをシンプルにする
+ * @param {HTMLElement | null} btn
  */
-function solveFunctionMessage(content) {
-  const func = functionMessages.find(({ name }) => name === content.name);
-  if (!func) {
-    console.error(`Extension: Func name ${content.name} not registed`);
-    return;
-  }
-  func.func(...content.args);
+function buttonMakeSimple(btn) {
+  if (!btn || !(btn instanceof HTMLButtonElement)) return;
+  btn.style.background = "none";
+  btn.style.width = "fit-content";
+  btn.style.height = "fit-content";
+  btn.style.margin = "0";
+  return btn;
 }
-
-addEventListener("message", (event) => {
-  if (
-    event.source !== window ||
-    !event.data ||
-    event.data.extensionId !== extensionID
-  )
-    return;
-  if (event.data.type === "func") solveFunctionMessage(event.data);
-});
 
 // Setting page
 (() => {
@@ -209,35 +209,31 @@ addEventListener("message", (event) => {
 // Song page
 (() => {
   const path = "songs";
-  /**@param {string} url  */
-  addFunctionMessage(
-    "_sbksAddonPlayYoutubeVideo",
-    /**@param {string} url */
-    (url) => {
-      closeYoutubeVideo();
-      const regExec = /youtu\.be\/([a-zA-Z0-9_\-]+)/.exec(url);
-      if (!regExec) {
-        showToast("error", "このリンクはYoutubeのものではありません。");
-        return;
-      }
-      const tr = document.createElement("tr");
-      tr.id = "youtube-area";
-      tr.innerHTML = `<td><i class="fas fa-window-close" onclick="_sbksAddonCloseYoutubeVideo()"></i>プレイヤー</td><td><iframe width="448" height="252" src="https://www.youtube.com/embed/${regExec[1]}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></td>`;
-      const info = document.getElementById("song-info");
-      if (!info)
-        return void showToast(
-          "error",
-          "再生するフレームの作成に失敗しました。",
-        );
-      info.insertAdjacentElement("beforeend", tr);
-    },
-  );
+  /**@param {string} url */
+  const playYoutubeVideo = (url) => {
+    closeYoutubeVideo();
+    const regExec = /youtu\.be\/([a-zA-Z0-9_\-]+)/.exec(url);
+    if (!regExec) {
+      showToast("error", "このリンクはYoutubeのものではありません。");
+      return;
+    }
+    const tr = document.createElement("tr");
+    tr.id = "youtube-area";
+    tr.innerHTML = `<td><button id="close-video"><i class="fas fa-window-close"></i></button>プレイヤー</td><td><iframe width="448" height="252" src="https://www.youtube.com/embed/${regExec[1]}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></td>`;
+    const closebtn = buttonMakeSimple(tr.querySelector("button#close-video"));
+    if (!!closebtn) {
+      closebtn.onclick = () => closeYoutubeVideo();
+    }
+    const info = document.getElementById("song-info");
+    if (!info)
+      return void showToast("error", "再生するフレームの作成に失敗しました。");
+    info.insertAdjacentElement("beforeend", tr);
+  };
   const closeYoutubeVideo = () => {
     const tr = document.querySelector("#youtube-area");
     if (!tr) return;
     tr.remove();
   };
-  addFunctionMessage("_sbksAddonCloseYoutubeVideo", closeYoutubeVideo);
   function page() {
     const youtubeLinks = Array.from(
       document.querySelectorAll(".song-url>.fa-youtube"),
@@ -250,15 +246,9 @@ addEventListener("message", (event) => {
       const playButtonIcon = document.createElement("i");
       playButtonIcon.className = `fas fa-play`;
       const playButton = document.createElement("button");
-      /*playButton.setAttribute(
-        "onclick",
-        `_sbksAddonPlayYoutubeVideo("${a.href}")`,
-      );*/
+      playButton.onclick = () => playYoutubeVideo(a.href);
       playButton.append(playButtonIcon);
-      playButton.style.background = "none";
-      playButton.style.width = "fit-content";
-      playButton.style.height = "fit-content";
-      playButton.style.margin = "0";
+      buttonMakeSimple(playButton);
       playButton.style.padding = "3px";
       a.insertAdjacentElement("beforebegin", playButton);
     });
@@ -350,37 +340,23 @@ addEventListener("message", (event) => {
 })();
 
 // Get Page
-/*(() => {
+(() => {
   // 最初のパス
   const thisPath = location.pathname.replace(/(^\/)|(\/$)/g, "").split("/")[0];
   const pageScript = _pageScripts.find(({ path }) => path === thisPath);
   if (!pageScript) return;
   pageScript.page();
-})();*/
+})();
 
-addEventListener("load", () => {
-  // 1. ボタン要素を作成
-  const btn = document.createElement("button");
-  btn.innerHTML = "拡張機能ボタン";
-  btn.id = "my-custom-button";
+console.log("Hello!");
 
-  // 2. スタイルを整える（直接指定、またはCSSファイルで）
-  btn.style.position = "fixed";
-  btn.style.top = "10px";
-  btn.style.right = "10px";
-  btn.style.zIndex = "9999";
-  btn.style.padding = "10px";
-  btn.style.backgroundColor = "#4285f4";
-  btn.style.color = "white";
-  btn.style.border = "none";
-  btn.style.borderRadius = "5px";
-  btn.style.cursor = "pointer";
-
-  // 3. クリック時の動作
-  btn.onclick = () => {
-    alert("ボタンがクリックされました！");
-  };
-
-  // 4. ページ（body）に追加
-  document.body.appendChild(btn);
+/**@type {Promise<void>} */
+const pageDOMLoad = new Promise((r) => {
+  if (document.readyState !== "loading") {
+    r();
+    return;
+  }
+  document.addEventListener("DOMContentLoaded", () => {
+    r();
+  });
 });
