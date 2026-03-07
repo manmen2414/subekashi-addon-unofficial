@@ -19,6 +19,7 @@
         "https://lyrics.imicomweb.com/*"
       ],
       "js": [
+        "src/config.js",
         "src/subekashi-page.js"
       ]
     }
