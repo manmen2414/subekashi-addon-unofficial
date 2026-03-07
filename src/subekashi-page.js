@@ -276,7 +276,6 @@ addEventListener("message", (event) => {
     const res = await fetch("https://lyrics.imicomweb.com/api/ad/");
     /**@type {{id:number,url:string,status:"fail"|"pass"|"still",view:number,dup:number}[]} */
     let json = await res.json();
-    json = json.filter((ad) => ad.status === "still");
     json = json.filter((ad) => {
       if (!allowStill && ad.status === "still") return false;
       if (!allowFailed && ad.status === "fail") return false;
