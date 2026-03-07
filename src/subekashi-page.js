@@ -267,7 +267,7 @@ function buttonMakeSimple(btn) {
     allowStill = false,
     allowFailed = false,
   ) {
-    const res = await fetch("https://lyrics.imicomweb.com/api/ad/");
+    const res = await fetch(`/api/ad/`);
     /**@type {{id:number,url:string,status:"fail"|"pass"|"still",view:number,dup:number}[]} */
     let json = await res.json();
     json = json.filter((ad) => {
@@ -321,7 +321,7 @@ function buttonMakeSimple(btn) {
     adNextItemHeader.insertAdjacentElement("beforebegin", adObject);
     // 公開中の宣伝であればviewを増加
     if (selectedAd.status === "pass")
-      await fetch(`https://lyrics.imicomweb.com/api/ad/${selectedAd.id}`, {
+      await fetch(`/api/ad/${selectedAd.id}`, {
         body: JSON.stringify({
           view: selectedAd.view + 1,
         }),
