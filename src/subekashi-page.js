@@ -158,17 +158,21 @@ function buttonMakeSimple(btn) {
     const showUnpassed = document.getElementById("show_unpassed");
     if (!showUnpassed) return;
     if (!(showUnpassed instanceof HTMLSelectElement)) return;
-    showUnpassed.setAttribute(
-      "onchange",
-      "cookieStore.set('show_unpassed',event.target.value)",
-    );
+    showUnpassed.onchange = () =>
+      cookieStore.set("show_unpassed", showUnpassed.value);
     // 一部設定では自前の宣伝処理を行うため、「宣伝の表示」について補正処理を入れる
-    isShownAd.setAttribute(
-      "onchange",
-      "cookieStore.set('is_shown_ad_addoned',event.target.value)",
-    );
-    isShownAd.value =
-      ((await cookieStore.get("is_shown_ad_addoned")) ?? {}).value ?? "on";
+    // クローンして元のエレメントを置き換えることで、リスナーを全消去する
+
+    setTimeout(async () => {
+      const newIsShownAdElement = isShownAd.cloneNode(true);
+      shownAdParent.replaceChild(newIsShownAdElement, isShownAd);
+      if (!(newIsShownAdElement instanceof HTMLSelectElement)) return;
+      newIsShownAdElement.onchange = (ev) =>
+        cookieStore.set("is_shown_ad_addoned", newIsShownAdElement.value);
+      isShownAd.value =
+        ((await cookieStore.get("is_shown_ad_addoned")) ?? {}).value ?? "on";
+    }, 100);
+
     setInterval(() => {
       calcClientAdRendering();
     }, 50);
@@ -347,8 +351,6 @@ function buttonMakeSimple(btn) {
   if (!pageScript) return;
   pageScript.page();
 })();
-
-console.log("Hello!");
 
 /**@type {Promise<void>} */
 const pageDOMLoad = new Promise((r) => {
