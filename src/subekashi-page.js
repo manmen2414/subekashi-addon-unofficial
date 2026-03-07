@@ -1,6 +1,107 @@
 //@ts-check
-/**@type {{path:string,page:()=>void}[]} */
+/**
+ * ページパスごとに変えるスプリクト
+ * @type {{path:string,page:()=>void}[]}
+ */
 const _pageScripts = [];
+/**
+ * ページに追加した関数とその名前
+ * @type {{name:string,func:function}[]}
+ */
+const functionMessages = [];
+/**
+ * 拡張機能ID
+ * @type {string}
+ */
+const extensionID = (() => {
+  try {
+    //@ts-ignore
+    return (chrome ?? browser).runtime.id;
+  } catch (ex) {
+    return "";
+  }
+})();
+
+/**
+ * HTML文字列のエスケープ
+ * @param {string} str
+ */
+const escapeHTML = (str) =>
+  str.replace(
+    /[&"<>']/g,
+    (match) =>
+      ({
+        "&": "&amp;",
+        '"': "&quot;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "'": "&#39;",
+      })[match] ?? match,
+  );
+
+/**
+ * ページに関数を追加する
+ * @param {string} name
+ * @param {function} func
+ */
+function addFunctionMessage(name, func) {
+  functionMessages.push({ name, func });
+  name = name.replace(/"/g, '\\"');
+  evalFunctionAtPage(
+    `
+window["${name}"]=(...a)=>{postMessage({
+extensionId:"${extensionID}",type:"func",name:"${name}",args:[...a]
+},"*")}
+  `.replace(/\r|\n/g, ""),
+  );
+}
+
+/**
+ * ページ上でJavascriptを評価する
+ * ## ※正しく使わないと脆弱性となる可能性が高い
+ * @param {string} str
+ */
+function evalFunctionAtPage(str) {
+  const script = document.createElement("script");
+  script.innerHTML = str;
+  document.body.appendChild(script);
+  script.remove();
+}
+
+/**
+ * トーストを`evalFunctionAtPage`経由で表示する\
+ * `icon`,`text`ともにエスケープ処理がされているため基本安全
+ * @param {"error" | "info" | "ok" | "warning"} icon
+ * @param {string} text
+ */
+function showToast(icon, text) {
+  const escapedIcon = icon.replace(/"/g, `\\"`),
+    escapedText = text.replace(/"/g, `\\"`);
+  evalFunctionAtPage(`showToast("${escapedIcon}","${escapedText}")`);
+}
+
+/**
+ * ページから送られて来た関数実行リクエストを解釈して実行する
+ * @param {{extensionId:string,name:string,args:any[],type:"func"}} content
+ */
+function solveFunctionMessage(content) {
+  const func = functionMessages.find(({ name }) => name === content.name);
+  if (!func) {
+    console.error(`Extension: Func name ${content.name} not registed`);
+    return;
+  }
+  func.func(...content.args);
+}
+
+addEventListener("message", (event) => {
+  if (
+    event.source !== window ||
+    !event.data ||
+    event.data.extensionId !== extensionID
+  )
+    return;
+  if (event.data.type === "func") solveFunctionMessage(event.data);
+});
 
 // Setting page
 (() => {
@@ -109,9 +210,8 @@ const _pageScripts = [];
 (() => {
   const path = "songs";
   /**@param {string} url  */
-  //TODO: どうにかして関数をインジェクトする
-  //@ts-ignore
-  exportFunction(
+  addFunctionMessage(
+    "_sbksAddonPlayYoutubeVideo",
     /**@param {string} url */
     (url) => {
       closeYoutubeVideo();
@@ -131,18 +231,13 @@ const _pageScripts = [];
         );
       info.insertAdjacentElement("beforeend", tr);
     },
-    window,
-    { defineAs: "_sbksAddonPlayYoutubeVideo" },
   );
   const closeYoutubeVideo = () => {
     const tr = document.querySelector("#youtube-area");
     if (!tr) return;
     tr.remove();
   };
-  //@ts-ignore
-  exportFunction(closeYoutubeVideo, window, {
-    defineAs: "_sbksAddonCloseYoutubeVideo",
-  });
+  addFunctionMessage("_sbksAddonCloseYoutubeVideo", closeYoutubeVideo);
   function page() {
     const youtubeLinks = Array.from(
       document.querySelectorAll(".song-url>.fa-youtube"),
@@ -155,10 +250,10 @@ const _pageScripts = [];
       const playButtonIcon = document.createElement("i");
       playButtonIcon.className = `fas fa-play`;
       const playButton = document.createElement("button");
-      playButton.setAttribute(
+      /*playButton.setAttribute(
         "onclick",
         `_sbksAddonPlayYoutubeVideo("${a.href}")`,
-      );
+      );*/
       playButton.append(playButtonIcon);
       playButton.style.background = "none";
       playButton.style.width = "fit-content";
@@ -256,10 +351,37 @@ const _pageScripts = [];
 })();
 
 // Get Page
-(() => {
+/*(() => {
   // 最初のパス
   const thisPath = location.pathname.replace(/(^\/)|(\/$)/g, "").split("/")[0];
   const pageScript = _pageScripts.find(({ path }) => path === thisPath);
   if (!pageScript) return;
   pageScript.page();
-})();
+})();*/
+
+addEventListener("load", () => {
+  // 1. ボタン要素を作成
+  const btn = document.createElement("button");
+  btn.innerHTML = "拡張機能ボタン";
+  btn.id = "my-custom-button";
+
+  // 2. スタイルを整える（直接指定、またはCSSファイルで）
+  btn.style.position = "fixed";
+  btn.style.top = "10px";
+  btn.style.right = "10px";
+  btn.style.zIndex = "9999";
+  btn.style.padding = "10px";
+  btn.style.backgroundColor = "#4285f4";
+  btn.style.color = "white";
+  btn.style.border = "none";
+  btn.style.borderRadius = "5px";
+  btn.style.cursor = "pointer";
+
+  // 3. クリック時の動作
+  btn.onclick = () => {
+    alert("ボタンがクリックされました！");
+  };
+
+  // 4. ページ（body）に追加
+  document.body.appendChild(btn);
+});
