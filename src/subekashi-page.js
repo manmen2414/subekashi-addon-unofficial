@@ -91,16 +91,39 @@ function showToast(icon, text) {
 })();
 
 /**
+ * @overload
+ * @param {HTMLButtonElement} btn 
+ * @returns {HTMLButtonElement}
+ */
+/**
+ * @overload
+ * @param {HTMLElement?} btn
+ * @returns {HTMLButtonElement?}
+ */
+/**
  * アイコンだけのボタンを作る用に、ボタンをシンプルにする
- * @param {HTMLElement | null} btn
+ * @param {HTMLElement?} btn
+ * @returns {HTMLButtonElement?}
  */
 function buttonMakeSimple(btn) {
-  if (!btn || !(btn instanceof HTMLButtonElement)) return;
+  if (!btn || !(btn instanceof HTMLButtonElement)) return null;
   btn.style.background = "none";
   btn.style.width = "fit-content";
   btn.style.height = "fit-content";
   btn.style.margin = "0";
   return btn;
+}
+/**
+ * ヘルプメッセージ (i)を作成する 
+ * @param {string} content 
+ */
+function generateHelpIcon(content) {
+  const icon = document.createElement("i");
+  icon.className = "fas fa-info-circle";
+  const btn = buttonMakeSimple(document.createElement("button"));
+  btn.onclick = () => showToast("info", content);
+  icon.appendChild(btn);
+  return icon;
 }
 
 // Setting page
@@ -132,9 +155,44 @@ function buttonMakeSimple(btn) {
     if (!label) throw new Error(`No ${id} setting label`);
     label.innerText = `${label.innerText}※`;
   }
+  /**
+   * @param {string} id
+   * @param {string} labelContent
+   * @param {{id:string,label:string}[]} values
+   * @param {string} helpText
+   */
+  async function generateSelectSetting(id, labelContent, values, helpText = "") {
+    const nowValue = ((await cookieStore.get(id)) ?? {}).value ?? values[0].id;
+    const settingWrapper = document.createElement("div");
+    settingWrapper.className = "form-col";
+    const settingLabel = document.createElement("label");
+    settingLabel.innerText = labelContent;
+    if (helpText.length > 0)
+      settingLabel.appendChild(generateHelpIcon(helpText));
+    settingWrapper.appendChild(settingLabel);
+    const select = document.createElement("select");
+    select.id = id;
+    select.className = "setting-input";
+    select.append(
+      ...values.map(({ id, label }) => {
+        const option = document.createElement("option");
+        option.value = id;
+        option.selected = nowValue === id;
+        option.innerText = label;
+        return option;
+      }),
+    );
+    settingWrapper.appendChild(select);
+    const documentedSelect = select;
+    if (!documentedSelect || !(documentedSelect instanceof HTMLSelectElement))
+      throw new Error(`select#${id} not found`);
+    documentedSelect.onchange = () =>
+      cookieStore.set(id, documentedSelect.value);
+    return settingWrapper;
+  }
   async function aboutAdSetting() {
     const settingSection = document.querySelector("#mainarticle>section");
-    if (!settingSection) return;
+    if (!settingSection) throw new Error(`Setting section not found`);
     // 移動
     const isShownAd = document.getElementById("is_shown_ad");
     if (!isShownAd || !(isShownAd instanceof HTMLSelectElement)) return;
@@ -144,22 +202,14 @@ function buttonMakeSimple(btn) {
     adColomnTitle.innerText = "トップ画面の宣伝";
     settingSection.append(adColomnTitle, shownAdParent);
     // 設定の追加
-    const showUnpassedNow =
-      ((await cookieStore.get("show_unpassed")) ?? {}).value ?? "off";
-    const showUnpassedWrapper = document.createElement("div");
-    showUnpassedWrapper.className = "form-col";
-    showUnpassedWrapper.innerHTML = `<label>未審査・未通過</label>
-    <select id="show_unpassed" class="setting-input">
-    <option value="off" ${showUnpassedNow === "off" ? "selected" : ""}>非表示</option>;
-    <option value="still" ${showUnpassedNow === "still" ? "selected" : ""}>未審査を表示</option>
-    <option value="fail" ${showUnpassedNow === "fail" ? "selected" : ""}>未審査と未通過を表示</option>
-    </select>`;
-    settingSection.append(showUnpassedWrapper);
-    const showUnpassed = document.getElementById("show_unpassed");
-    if (!showUnpassed) return;
-    if (!(showUnpassed instanceof HTMLSelectElement)) return;
-    showUnpassed.onchange = () =>
-      cookieStore.set("show_unpassed", showUnpassed.value);
+    settingSection.append(
+      await generateSelectSetting("show_unpassed", "未審査・未通過", [
+        { id: "off", label: "非表示" },
+        { id: "still", label: "未審査を表示" },
+        { id: "fail", label: "未審査と未通過を表示" },
+      ]),
+    );
+
     // 一部設定では自前の宣伝処理を行うため、「宣伝の表示」について補正処理を入れる
     // クローンして元のエレメントを置き換えることで、リスナーを全消去する
 
@@ -196,15 +246,25 @@ function buttonMakeSimple(btn) {
       }
     }
   }
+  async function aboutSongSetting() {
+    const brlyricSelection = document.getElementById("brlyrics");
+    if (!brlyricSelection) throw new Error(`#brlyrics not found`);
+    const brlyricFormCol = brlyricSelection.parentElement;
+    if (!brlyricFormCol)
+      throw new Error(`#brlyrics parent (Expect div.form-col) not found`);
+    brlyricFormCol.insertAdjacentElement("afterend",
+      await generateSelectSetting("hide-joke-lyric", "ネタ曲の歌詞を隠す", [
+        { id: "no", label: "いいえ" },
+        { id: "yes", label: "はい" },
+      ], `ネタ曲の歌詞をデフォルトで非表示にします。ボタンをクリックすることで表示できます。<br>
+      この機能を有効化したままスペシャルデザインを閲覧すると、不具合が生じる可能性があります。`)
+    );
+  }
   function page() {
-    document
-      .querySelector("#mainarticle>section>h2")
-      ?.insertAdjacentHTML(
-        "beforebegin",
-        `<p style="text-align:center">※一部の設定は非公式アドオンによって自由入力に変更されています。</p>`,
-      );
+
     freeNumberSettingForId("is_shown_new");
     freeNumberSettingForId("is_shown_lack");
+    aboutSongSetting();
     aboutAdSetting();
   }
   _pageScripts.push({ path, page });
@@ -238,7 +298,7 @@ function buttonMakeSimple(btn) {
     if (!tr) return;
     tr.remove();
   };
-  function page() {
+  function initYoutubeEmbed() {
     const youtubeLinks = Array.from(
       document.querySelectorAll(".song-url>.fa-youtube"),
     )
@@ -256,6 +316,35 @@ function buttonMakeSimple(btn) {
       playButton.style.padding = "3px";
       a.insertAdjacentElement("beforebegin", playButton);
     });
+  }
+  async function initJokeLyricHide() {
+    const settingEnable = (await cookieStore.get("hide-joke-lyric"))?.value ?? "off";
+    if (settingEnable !== "yes") return;
+    // ネタ曲の判定
+    if (!(() => {
+      const tagsWrap = document.getElementById("tags");
+      if (!tagsWrap) return false;
+      // タグ自体が収容されているエレメント
+      const tagsContent = tagsWrap.children.item(1);
+      if (!tagsContent) return false;
+      return Array.from(tagsContent.childNodes).some((c) => {
+        if (!(c instanceof HTMLAnchorElement)) return false;
+        return c.innerText === "ネタ曲";
+      })
+    })()) return;
+
+    const lyrics = document.getElementById("lyrics");
+    if (!lyrics) return;
+    const details = document.createElement("details");
+    const summary = document.createElement("summary");
+    summary.innerHTML = `<i class="fas fa-eye"></i>表示`;
+
+    lyrics.insertAdjacentElement("beforebegin", details);
+    details.append(summary, lyrics);
+  }
+  function page() {
+    initJokeLyricHide();
+    initYoutubeEmbed();
   }
   _pageScripts.push({ path, page });
 })();
