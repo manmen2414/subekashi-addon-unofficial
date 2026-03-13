@@ -86,7 +86,7 @@ function noYoutube() {
 function getVideoId(url) {
   const shortLink = /http(?:s?)\:\/\/youtu\.be\/([0-9a-zA-z_\-]+)/;
   const normalLink =
-    /http(?:s?)\:\/\/www\.youtube\.com\/watch\?v=([0-9a-zA-z_\-]+)/;
+    /http(?:s?)\:\/\/(?:www|m)\.youtube\.com\/watch\?v=([0-9a-zA-z_\-]+)/;
   const videoIdExec = shortLink.exec(url) ?? normalLink.exec(url);
   if (!videoIdExec) return null;
   return videoIdExec[1];
