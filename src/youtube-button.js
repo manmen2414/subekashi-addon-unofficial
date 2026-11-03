@@ -221,6 +221,7 @@
     if (panel || !host) return;
     panel = document.createElement("iframe");
     panel.className = "panel";
+    panel.title = "すべかしの曲の情報";
     panel.allow = "clipboard-write";
     panel.src = `${chrome.runtime.getURL("src/menu.html")}?url=${encodeURIComponent(location.href)}`;
     host.shadowRoot?.append(panel);
@@ -245,6 +246,7 @@
       if (panel) closePanel();
       else openPanel();
     } else if (state === "missing") {
+      clearSongsCache(currentVideoId);
       window.open(getNewSongUrl(currentVideoId), "_blank", "noopener");
     } else if (state === "error") {
       load(true);
@@ -270,7 +272,7 @@
     if (!host) createButton();
     setState("loading");
     try {
-      const songs = await fetchSongs(videoId);
+      const songs = await fetchSongs(videoId, force);
       // 取得中に別の動画に移った
       if (!songs || videoId !== currentVideoId) return;
       setState(songs.length > 0 ? "found" : "missing");
@@ -298,7 +300,13 @@
         if (!changedWhileLoading) enabled = settings.showFloatingButton;
         load();
       })
-      .catch(() => {});
+      .catch(() => {
+        // 設定を読み込めなかったときは、初期設定で動かす
+        if (!changedWhileLoading) {
+          enabled = DEFAULT_SETTINGS.showFloatingButton;
+        }
+        load();
+      });
   }
 
   init();

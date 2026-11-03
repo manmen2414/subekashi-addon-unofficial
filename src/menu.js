@@ -35,7 +35,10 @@ function getTabUrl() {
 /**最後に始めた読み込みの番号。再読み込みされたら、前の読み込みの結果は捨てる */
 let loadCount = 0;
 
-async function main() {
+/**
+ * @param {boolean} force 覚えている取得結果を使わずに取得し直す(再読み込みボタン)
+ */
+async function main(force = false) {
   const loadId = ++loadCount;
   resetView();
   const tabUrl = await getTabUrl();
@@ -49,7 +52,7 @@ async function main() {
   /**@type {SongJson[]|undefined} */
   let songs;
   try {
-    songs = await fetchSongs(videoId);
+    songs = await fetchSongs(videoId, force);
   } catch {
     if (loadId !== loadCount) return;
     $("#info").innerText =
@@ -131,8 +134,10 @@ function displaySong(song) {
 /**@param {string} videoId  */
 function displayRegister(videoId) {
   $("#regist-wrapper").hidden = false;
-  $("#regist-song").onclick = () =>
+  $("#regist-song").onclick = () => {
+    clearSongsCache(videoId);
     open(getNewSongUrl(videoId), "_blank", "noopener");
+  };
 }
 function noYoutube() {
   $("#info").innerText = "Youtubeの再生ページを開いてください。";
@@ -194,7 +199,7 @@ function getTags(song) {
 }
 
 function initReload() {
-  $("#reload").onclick = main;
+  $("#reload").onclick = () => main(true);
 }
 
 async function initSettings() {

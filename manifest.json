@@ -1,6 +1,6 @@
 {
   "name": "全て歌詞の所為です。拡張機能",
-  "description": "YouTubeから曲情報を閲覧・設定します",
+  "description": "YouTubeの動画が「全て歌詞の所為です。」に登録されているかを確認し、曲情報の閲覧・登録ができます",
   "version": "1.0",
   "manifest_version": 3,
   "minimum_chrome_version": "116",

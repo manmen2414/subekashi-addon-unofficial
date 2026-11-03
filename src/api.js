@@ -103,12 +103,25 @@ function getVideoId(url) {
   return videoId;
 }
 
+/**取得結果を覚えておく時間。動画を行き来するたびにサーバーへ問い合わせないようにする */
+const SONGS_CACHE_TTL = 3 * 60 * 1000;
+/**覚えておく動画の数。YouTubeを開いたままにしても、メモリを使い続けないようにする */
+const SONGS_CACHE_MAX_SIZE = 50;
+/**@type {Map<string, {songs: SongJson[], expires: number}>} 動画IDごとの取得結果(古い順) */
+const songsCache = new Map();
+
 /**
  * 動画IDに紐づく曲を取得する。再度の取得でキャンセルされた場合はundefined、取得できなかった場合や想定外の形式だった場合は例外を投げる
+ * 取得結果は一定時間覚えておき、forceがtrueのときだけ覚えている結果を使わずに取得し直す
  * @param {string} videoId
+ * @param {boolean} force
  * @returns {Promise<SongJson[]|undefined>}
  */
-async function fetchSongs(videoId) {
+async function fetchSongs(videoId, force = false) {
+  const cached = songsCache.get(videoId);
+  if (!force && cached && cached.expires > Date.now()) {
+    return cached.songs;
+  }
   const json = await exponentialBackoff(
     `song/?url=${encodeURIComponent(`https://youtu.be/${videoId}`)}`,
     "song",
@@ -121,7 +134,23 @@ async function fetchSongs(videoId) {
   ) {
     throw new Error("Unexpected response");
   }
+  songsCache.delete(videoId);
+  songsCache.set(videoId, {
+    songs: json.result,
+    expires: Date.now() + SONGS_CACHE_TTL,
+  });
+  while (songsCache.size > SONGS_CACHE_MAX_SIZE) {
+    songsCache.delete(songsCache.keys().next().value);
+  }
   return json.result;
+}
+
+/**
+ * 覚えている取得結果を捨てる。曲を登録しに行ったあとに、古い「未登録」を使わないようにする
+ * @param {string} videoId
+ */
+function clearSongsCache(videoId) {
+  songsCache.delete(videoId);
 }
 
 /**
