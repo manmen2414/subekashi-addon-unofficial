@@ -70,12 +70,25 @@ function resetView() {
   $("#info").innerText = "";
   $("#songs").replaceChildren();
   $("#regist-wrapper").hidden = true;
+  notifyPanelWidth();
+}
+
+/**
+ * YouTube上のパネルの場合、歌詞を開いているときだけ幅を広げるよう親のページに伝える
+ */
+function notifyPanelWidth() {
+  if (!inFrame) return;
+  parent.postMessage(
+    { type: WIDE_PANEL_MESSAGE, wide: !!$("details[open]") },
+    YOUTUBE_ORIGIN,
+  );
 }
 
 /**
  * @param {SongJson} song
  */
 function displaySong(song) {
+  if (!Number.isInteger(song.id)) return;
   /**@type {DocumentFragment} */
   //@ts-ignore
   const el = $("#song-template").content.cloneNode(true);
@@ -84,7 +97,8 @@ function displaySong(song) {
 
   const url = `${SUBEKASHI_URL}/songs/${song.id}`;
   $$(".song-open").href = url;
-  $$(".song-copy").addEventListener("click", () => copy(url));
+  $$(".song-url").innerText = url.replace(/^https?:\/\//, "");
+  $$(".song-url-copy").addEventListener("click", () => copy(url));
   $$(".song-title-text").innerText = song.title;
   $$(".song-title-copy").addEventListener("click", () => copy(song.title));
 
@@ -112,7 +126,8 @@ function displaySong(song) {
 /**@param {string} videoId  */
 function displayRegister(videoId) {
   $("#regist-wrapper").hidden = false;
-  $("#regist-song").onclick = () => open(getNewSongUrl(videoId), "_blank");
+  $("#regist-song").onclick = () =>
+    open(getNewSongUrl(videoId), "_blank", "noopener");
 }
 function noYoutube() {
   $("#info").innerText = "Youtubeの再生ページを開いてください。";
@@ -188,16 +203,15 @@ async function initSettings() {
 const inFrame = window !== window.top;
 document.documentElement.classList.toggle("in-frame", inFrame);
 
-// パネル内にフォーカスがあるとEscapeは親のページに届かないため、閉じるよう伝える
 if (inFrame) {
+  // パネル内にフォーカスがあるとEscapeは親のページに届かないため、閉じるよう伝える
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
-      parent.postMessage(
-        { type: CLOSE_PANEL_MESSAGE },
-        location.ancestorOrigins?.[0] ?? "*",
-      );
+      parent.postMessage({ type: CLOSE_PANEL_MESSAGE }, YOUTUBE_ORIGIN);
     }
   });
+  // toggleはバブリングしないため、キャプチャで受ける
+  document.addEventListener("toggle", notifyPanelWidth, true);
 }
 
 document.addEventListener("DOMContentLoaded", () => {

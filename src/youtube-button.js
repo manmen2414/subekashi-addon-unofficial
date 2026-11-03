@@ -88,14 +88,16 @@
       right: 20px;
       bottom: 90px;
       z-index: 2147483647;
-      width: 360px;
+      width: 300px;
       height: 480px;
       max-height: calc(100vh - 110px);
       border: 1px solid #555;
       border-radius: 12px;
       background-color: #111;
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      transition: width 0.15s;
     }
+    .panel.wide { width: 360px; }
   `;
 
   /**@type {HTMLElement?} */
@@ -108,7 +110,8 @@
   let currentVideoId = null;
   /**@type {ButtonState} */
   let state = "loading";
-  let enabled = true;
+  /**設定を読み込むまでは表示しない */
+  let enabled = false;
 
   /**
    * @param {string} path
@@ -190,17 +193,21 @@
   }
 
   /**
-   * パネルの中でEscapeが押されたら閉じる
+   * パネルの中から、Escapeが押されたら閉じる・歌詞を開閉したら幅を変えるよう伝えられる
    * @param {MessageEvent} event
    */
   function onMessage(event) {
     if (
-      panel &&
-      event.source === panel.contentWindow &&
-      event.origin === new URL(chrome.runtime.getURL("")).origin &&
-      event.data?.type === CLOSE_PANEL_MESSAGE
+      !panel ||
+      event.source !== panel.contentWindow ||
+      event.origin !== new URL(chrome.runtime.getURL("")).origin
     ) {
+      return;
+    }
+    if (event.data?.type === CLOSE_PANEL_MESSAGE) {
       closePanel();
+    } else if (event.data?.type === WIDE_PANEL_MESSAGE) {
+      panel.classList.toggle("wide", event.data.wide === true);
     }
   }
 
@@ -264,17 +271,22 @@
     }
   }
 
-  async function init() {
-    enabled = (await getSettings()).showFloatingButton;
-    load();
+  function init() {
+    // 設定を読み込んでいる間の変更を取りこぼさないよう、先にリスナーを登録する
+    let changedWhileLoading = false;
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== "sync" || !changes.showFloatingButton) return;
+      changedWhileLoading = true;
+      enabled = changes.showFloatingButton.newValue ?? true;
+      load();
+    });
 
     // YouTubeは再生ページの移動でページを読み込み直さない
     window.addEventListener("yt-navigate-finish", () => load());
     window.addEventListener("popstate", () => load());
 
-    chrome.storage.onChanged.addListener((changes, area) => {
-      if (area !== "sync" || !changes.showFloatingButton) return;
-      enabled = changes.showFloatingButton.newValue ?? true;
+    getSettings().then((settings) => {
+      if (!changedWhileLoading) enabled = settings.showFloatingButton;
       load();
     });
   }

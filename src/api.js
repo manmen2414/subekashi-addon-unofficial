@@ -1,5 +1,9 @@
 /**YouTube上のパネル(iframe)から、親のページにパネルを閉じるよう伝えるメッセージ */
 const CLOSE_PANEL_MESSAGE = "subekashi-addon-close-panel";
+/**YouTube上のパネル(iframe)から、親のページにパネルの幅を変えるよう伝えるメッセージ(wide: 歌詞を開いているか) */
+const WIDE_PANEL_MESSAGE = "subekashi-addon-wide-panel";
+/**YouTube上のパネル(iframe)の親のページのオリジン */
+const YOUTUBE_ORIGIN = "https://www.youtube.com";
 
 /**
  * s秒間プログラムを停止する。signalがabortされたらすぐに戻る
@@ -31,6 +35,8 @@ const jsonControllers = {};
  */
 async function exponentialBackoff(path, from = "default") {
   const MAX_RETRY_COUNT = 5;
+  // サーバーが応答しないときに「読み込み中」のまま止まらないよう、1回の取得ごとに打ち切ってリトライする
+  const FETCH_TIMEOUT = 8000;
 
   jsonControllers[from]?.abort();
   const jsonController = new AbortController();
@@ -40,7 +46,10 @@ async function exponentialBackoff(path, from = "default") {
     try {
       const res = await fetch(`${SUBEKASHI_URL}/api/${path}`, {
         cache: "reload",
-        signal: jsonController.signal,
+        signal: AbortSignal.any([
+          jsonController.signal,
+          AbortSignal.timeout(FETCH_TIMEOUT),
+        ]),
       });
       if (!res.ok) {
         throw Object.assign(new Error(`HTTP error! Status: ${res.status}`), {

@@ -33,8 +33,7 @@
   <template id="song-template">
     <section class="song">
       <div class="song-links">
-        <a class="song-open btn" target="_blank" rel="noopener">開く</a>
-        <button class="song-copy btn">コピー</button>
+        <a class="song-open btn" target="_blank" rel="noopener">すべかしで開く</a>
       </div>
       <div class="song-title">
         <svg class="song-title-copy copy-btn" xmlns="http://www.w3.org/2000/svg" height="20px"
@@ -43,6 +42,14 @@
             d="M360-240q-29.7 0-50.85-21.15Q288-282.3 288-312v-480q0-29.7 21.15-50.85Q330.3-864 360-864h384q29.7 0 50.85 21.15Q816-821.7 816-792v480q0 29.7-21.15 50.85Q773.7-240 744-240H360Zm0-72h384v-480H360v480ZM216-96q-29.7 0-50.85-21.15Q144-138.3 144-168v-552h72v552h456v72H216Zm144-216v-480 480Z" />
         </svg>
         <span class="song-title-text"></span>
+      </div>
+      <div class="song-url-wrapper">
+        <svg class="song-url-copy copy-btn" xmlns="http://www.w3.org/2000/svg" height="16px"
+          viewBox="0 -960 960 960" width="16px" fill="#e3e3e3">
+          <path
+            d="M360-240q-29.7 0-50.85-21.15Q288-282.3 288-312v-480q0-29.7 21.15-50.85Q330.3-864 360-864h384q29.7 0 50.85 21.15Q816-821.7 816-792v480q0 29.7-21.15 50.85Q773.7-240 744-240H360Zm0-72h384v-480H360v480ZM216-96q-29.7 0-50.85-21.15Q144-138.3 144-168v-552h72v552h456v72H216Zm144-216v-480 480Z" />
+        </svg>
+        <span class="song-url"></span>
       </div>
       <div class="song-tags-wrapper">タグ: <span class="song-tags"></span></div>
       <div class="song-imitate-wrapper">模倣: <span class="song-imitates"></span><span class="song-imitated"></span>ています</div>

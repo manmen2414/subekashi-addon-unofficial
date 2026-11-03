@@ -15,7 +15,7 @@ html {
 }
 
 body {
-  width: 360px;
+  width: 300px;
   margin: 0;
   padding: 2px 14px 14px;
   box-sizing: border-box;
@@ -24,7 +24,12 @@ body {
   text-align: center;
 }
 
-/* YouTube上のパネル(iframe)ではパネルの幅に合わせる */
+/* 歌詞を開いているときだけ広げる */
+body:has(details[open]) {
+  width: 360px;
+}
+
+/* YouTube上のパネル(iframe)ではパネルの幅に合わせる(パネルの幅はmenu.jsが親のページに伝えて変える) */
 html.in-frame body {
   width: auto;
 }
@@ -38,7 +43,7 @@ a {
 }
 
 h1 {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: lighter;
   margin: 16px 0 0;
 }
@@ -69,6 +74,16 @@ h1::after {
   line-height: 26px;
   margin-bottom: 8px;
   overflow-wrap: anywhere;
+}
+
+.song-url-wrapper {
+  font-size: 13px;
+  margin-bottom: 8px;
+  overflow-wrap: anywhere;
+}
+
+.song-url-copy {
+  vertical-align: -3px;
 }
 
 .song-tags-wrapper,
@@ -108,6 +123,11 @@ h1::after {
 
 .btn:hover {
   background-color: #fff;
+}
+
+.song-open {
+  padding: 8px 22px;
+  font-size: 18px;
 }
 
 #regist-song {
