@@ -126,6 +126,8 @@
   }
 
   function createButton() {
+    // 拡張機能を更新・再読み込みしたあとは、前のスクリプトが作ったボタンが残っていることがある
+    document.getElementById(HOST_ID)?.remove();
     host = document.createElement("div");
     host.id = HOST_ID;
     const shadow = host.attachShadow({ mode: "open" });
@@ -250,6 +252,8 @@
    * @param {boolean} force 同じ動画でも取得し直す
    */
   async function load(force = false) {
+    // 拡張機能を更新・再読み込みすると、開いているタブの古いスクリプトはchrome.*を使えなくなる
+    if (!chrome.runtime?.id) return;
     const videoId = getVideoId(location.href);
     if (!enabled || !videoId) {
       currentVideoId = null;
@@ -285,10 +289,12 @@
     window.addEventListener("yt-navigate-finish", () => load());
     window.addEventListener("popstate", () => load());
 
-    getSettings().then((settings) => {
-      if (!changedWhileLoading) enabled = settings.showFloatingButton;
-      load();
-    });
+    getSettings()
+      .then((settings) => {
+        if (!changedWhileLoading) enabled = settings.showFloatingButton;
+        load();
+      })
+      .catch(() => {});
   }
 
   init();

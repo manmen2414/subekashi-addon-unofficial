@@ -88,7 +88,6 @@ function notifyPanelWidth() {
  * @param {SongJson} song
  */
 function displaySong(song) {
-  if (!Number.isInteger(song.id)) return;
   /**@type {DocumentFragment} */
   //@ts-ignore
   const el = $("#song-template").content.cloneNode(true);

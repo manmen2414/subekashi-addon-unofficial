@@ -36,7 +36,7 @@ const jsonControllers = {};
 async function exponentialBackoff(path, from = "default") {
   const MAX_RETRY_COUNT = 5;
   // サーバーが応答しないときに「読み込み中」のまま止まらないよう、1回の取得ごとに打ち切ってリトライする
-  const FETCH_TIMEOUT = 8000;
+  const FETCH_TIMEOUT = 5000;
 
   jsonControllers[from]?.abort();
   const jsonController = new AbortController();
@@ -111,7 +111,11 @@ async function fetchSongs(videoId) {
     "song",
   );
   if (!json) return;
-  if (!Array.isArray(json.result)) {
+  // 表示できない曲が混ざっていると、登録済みなのに何も表示されなくなるため、まとめてエラーにする
+  if (
+    !Array.isArray(json.result) ||
+    !json.result.every((song) => Number.isInteger(song?.id))
+  ) {
     throw new Error("Unexpected response");
   }
   return json.result;

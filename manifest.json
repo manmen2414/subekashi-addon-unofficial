@@ -3,6 +3,7 @@
   "description": "YouTubeから曲情報を閲覧・設定します",
   "version": "1.0",
   "manifest_version": 3,
+  "minimum_chrome_version": "116",
   "icons": {
     "16": "assets/icon_16.png",
     "48": "assets/icon_48.png",
