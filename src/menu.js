@@ -70,16 +70,22 @@ function resetView() {
   $("#info").innerText = "";
   $("#songs").replaceChildren();
   $("#regist-wrapper").hidden = true;
-  notifyPanelWidth();
+  notifyPanelSize();
 }
 
 /**
- * YouTube上のパネルの場合、歌詞を開いているときだけ幅を広げるよう親のページに伝える
+ * YouTube上のパネルの場合、歌詞を開いているときは幅を広げて高さを上限までにし、
+ * 閉じているときは高さを中身に合わせるよう親のページに伝える
  */
-function notifyPanelWidth() {
+function notifyPanelSize() {
   if (!inFrame) return;
+  const wide = !!$("details[open]");
   parent.postMessage(
-    { type: WIDE_PANEL_MESSAGE, wide: !!$("details[open]") },
+    {
+      type: PANEL_SIZE_MESSAGE,
+      wide,
+      height: wide ? null : document.body.getBoundingClientRect().height,
+    },
     YOUTUBE_ORIGIN,
   );
 }
@@ -210,10 +216,12 @@ if (inFrame) {
     }
   });
   // toggleはバブリングしないため、キャプチャで受ける
-  document.addEventListener("toggle", notifyPanelWidth, true);
+  document.addEventListener("toggle", notifyPanelSize, true);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  // 曲を表示したときなど、中身の大きさが変わるたびに伝える
+  if (inFrame) new ResizeObserver(notifyPanelSize).observe(document.body);
   initReload();
   initSettings();
   main();

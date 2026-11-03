@@ -125,11 +125,6 @@ h1::after {
   background-color: #fff;
 }
 
-.song-open {
-  padding: 8px 22px;
-  font-size: 18px;
-}
-
 #regist-song {
   display: block;
   width: 100%;

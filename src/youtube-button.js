@@ -89,15 +89,15 @@
       bottom: 90px;
       z-index: 2147483647;
       width: 300px;
-      height: 480px;
+      height: 160px;
       max-height: calc(100vh - 110px);
       border: 1px solid #555;
       border-radius: 12px;
       background-color: #111;
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-      transition: width 0.15s;
+      transition: width 0.15s, height 0.15s;
     }
-    .panel.wide { width: 360px; }
+    .panel.wide { width: 360px; height: 480px; }
   `;
 
   /**@type {HTMLElement?} */
@@ -208,8 +208,12 @@
     }
     if (event.data?.type === CLOSE_PANEL_MESSAGE) {
       closePanel();
-    } else if (event.data?.type === WIDE_PANEL_MESSAGE) {
+    } else if (event.data?.type === PANEL_SIZE_MESSAGE) {
       panel.classList.toggle("wide", event.data.wide === true);
+      const height = event.data.height;
+      panel.style.height = Number.isFinite(height)
+        ? `${Math.ceil(height)}px`
+        : "";
     }
   }
 

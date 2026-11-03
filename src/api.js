@@ -1,7 +1,10 @@
 /**YouTube上のパネル(iframe)から、親のページにパネルを閉じるよう伝えるメッセージ */
 const CLOSE_PANEL_MESSAGE = "subekashi-addon-close-panel";
-/**YouTube上のパネル(iframe)から、親のページにパネルの幅を変えるよう伝えるメッセージ(wide: 歌詞を開いているか) */
-const WIDE_PANEL_MESSAGE = "subekashi-addon-wide-panel";
+/**
+ * YouTube上のパネル(iframe)から、親のページにパネルの大きさを変えるよう伝えるメッセージ
+ * wide: 歌詞を開いているか、height: 歌詞を閉じているときの中身の高さ(開いているときはnull)
+ */
+const PANEL_SIZE_MESSAGE = "subekashi-addon-panel-size";
 /**YouTube上のパネル(iframe)の親のページのオリジン */
 const YOUTUBE_ORIGIN = "https://www.youtube.com";
 
