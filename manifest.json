@@ -1,6 +1,6 @@
 {
   "name": "全て歌詞の所為です。拡張機能",
-  "description": "Youtubeから曲情報を閲覧・設定します",
+  "description": "YouTubeから曲情報を閲覧・設定します",
   "version": "1.0",
   "manifest_version": 3,
   "icons": {
@@ -55,7 +55,7 @@
     }
   ],
   "permissions": [
-    "tabs",
+    "activeTab",
     "storage"
   ]
 }

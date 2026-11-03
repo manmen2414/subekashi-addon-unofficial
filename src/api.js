@@ -1,9 +1,23 @@
+/**YouTube上のパネル(iframe)から、親のページにパネルを閉じるよう伝えるメッセージ */
+const CLOSE_PANEL_MESSAGE = "subekashi-addon-close-panel";
+
 /**
- * s秒間プログラムを停止する
+ * s秒間プログラムを停止する。signalがabortされたらすぐに戻る
  * @param {number} s
+ * @param {AbortSignal} [signal]
  */
-function sleep(s) {
-  return new Promise((resolve) => setTimeout(resolve, s * 1000));
+function sleep(s, signal) {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, s * 1000);
+    signal?.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+      { once: true },
+    );
+  });
 }
 
 /**@type {Record<string, AbortController>} fromごとのAbortController */
@@ -29,18 +43,22 @@ async function exponentialBackoff(path, from = "default") {
         signal: jsonController.signal,
       });
       if (!res.ok) {
-        throw new Error(`HTTP error! Status: ${res.status}`);
+        throw Object.assign(new Error(`HTTP error! Status: ${res.status}`), {
+          status: res.status,
+        });
       }
       return await res.json();
     } catch (error) {
       if (jsonController.signal.aborted) {
         return;
       }
-      if (retry < MAX_RETRY_COUNT) {
-        await sleep(0.2 * 2 ** retry);
-      } else {
+      // 429以外の4xxはリクエストが不正なため、リトライしても同じ結果になる
+      const isClientError =
+        error.status >= 400 && error.status < 500 && error.status !== 429;
+      if (isClientError || retry >= MAX_RETRY_COUNT) {
         throw error;
       }
+      await sleep(0.2 * 2 ** retry, jsonController.signal);
     }
   }
 }
@@ -74,7 +92,7 @@ function getVideoId(url) {
 }
 
 /**
- * 動画IDに紐づく曲を取得する。再度の取得でキャンセルされた場合はundefined、取得できなかった場合は例外を投げる
+ * 動画IDに紐づく曲を取得する。再度の取得でキャンセルされた場合はundefined、取得できなかった場合や想定外の形式だった場合は例外を投げる
  * @param {string} videoId
  * @returns {Promise<SongJson[]|undefined>}
  */
@@ -83,7 +101,11 @@ async function fetchSongs(videoId) {
     `song/?url=${encodeURIComponent(`https://youtu.be/${videoId}`)}`,
     "song",
   );
-  return json?.result;
+  if (!json) return;
+  if (!Array.isArray(json.result)) {
+    throw new Error("Unexpected response");
+  }
+  return json.result;
 }
 
 /**

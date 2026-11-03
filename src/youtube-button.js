@@ -174,6 +174,36 @@
     button = null;
   }
 
+  /**
+   * パネルの外側をクリックしたら閉じる
+   * @param {MouseEvent} event
+   */
+  function onOutsideClick(event) {
+    if (host && !event.composedPath().includes(host)) closePanel();
+  }
+
+  /**
+   * @param {KeyboardEvent} event
+   */
+  function onKeydown(event) {
+    if (event.key === "Escape") closePanel();
+  }
+
+  /**
+   * パネルの中でEscapeが押されたら閉じる
+   * @param {MessageEvent} event
+   */
+  function onMessage(event) {
+    if (
+      panel &&
+      event.source === panel.contentWindow &&
+      event.origin === new URL(chrome.runtime.getURL("")).origin &&
+      event.data?.type === CLOSE_PANEL_MESSAGE
+    ) {
+      closePanel();
+    }
+  }
+
   function openPanel() {
     if (panel || !host) return;
     panel = document.createElement("iframe");
@@ -181,11 +211,19 @@
     panel.allow = "clipboard-write";
     panel.src = `${chrome.runtime.getURL("src/menu.html")}?url=${encodeURIComponent(location.href)}`;
     host.shadowRoot?.append(panel);
+    // YouTubeのページ全体で常にイベントを受けないよう、パネルを開いている間だけ登録する
+    document.addEventListener("click", onOutsideClick, true);
+    document.addEventListener("keydown", onKeydown);
+    window.addEventListener("message", onMessage);
   }
 
   function closePanel() {
-    panel?.remove();
+    if (!panel) return;
+    panel.remove();
     panel = null;
+    document.removeEventListener("click", onOutsideClick, true);
+    document.removeEventListener("keydown", onKeydown);
+    window.removeEventListener("message", onMessage);
   }
 
   function onClick() {
@@ -238,17 +276,6 @@
       if (area !== "sync" || !changes.showFloatingButton) return;
       enabled = changes.showFloatingButton.newValue ?? true;
       load();
-    });
-
-    document.addEventListener(
-      "click",
-      (event) => {
-        if (panel && host && !event.composedPath().includes(host)) closePanel();
-      },
-      true,
-    );
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") closePanel();
     });
   }
 

@@ -32,9 +32,14 @@ function getTabUrl() {
   });
 }
 
+/**最後に始めた読み込みの番号。再読み込みされたら、前の読み込みの結果は捨てる */
+let loadCount = 0;
+
 async function main() {
+  const loadId = ++loadCount;
   resetView();
   const tabUrl = await getTabUrl();
+  if (loadId !== loadCount) return;
   const videoId = tabUrl ? getVideoId(tabUrl) : null;
   if (!videoId) {
     noYoutube();
@@ -46,12 +51,13 @@ async function main() {
   try {
     songs = await fetchSongs(videoId);
   } catch {
+    if (loadId !== loadCount) return;
     $("#info").innerText =
       "曲の情報を取得できませんでした。通信状況を確認して、右上の再読み込みボタンを押してください。";
     return;
   }
   // 再読み込みされ、取得がキャンセルされた
-  if (!songs) return;
+  if (!songs || loadId !== loadCount) return;
   $("#info").innerText = "";
   if (songs.length === 0) {
     displayRegister(videoId);
@@ -86,8 +92,8 @@ function displaySong(song) {
   if (tags.length === 0) $$(".song-tags-wrapper").hidden = true;
   $$(".song-tags").innerText = tags.join(",");
 
-  const imitatesCount = song.imitates.length;
-  const imitatedCount = song.imitateds.length;
+  const imitatesCount = song.imitates?.length ?? 0;
+  const imitatedCount = song.imitateds?.length ?? 0;
   if (!imitatesCount && !imitatedCount)
     $$(".song-imitate-wrapper").hidden = true;
   if (imitatesCount) {
@@ -179,7 +185,20 @@ async function initSettings() {
   );
 }
 
-document.documentElement.classList.toggle("in-frame", window !== window.top);
+const inFrame = window !== window.top;
+document.documentElement.classList.toggle("in-frame", inFrame);
+
+// パネル内にフォーカスがあるとEscapeは親のページに届かないため、閉じるよう伝える
+if (inFrame) {
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      parent.postMessage(
+        { type: CLOSE_PANEL_MESSAGE },
+        location.ancestorOrigins?.[0] ?? "*",
+      );
+    }
+  });
+}
 
 document.addEventListener("DOMContentLoaded", () => {
   initReload();
