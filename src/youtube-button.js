@@ -294,6 +294,8 @@
     // YouTubeは再生ページの移動でページを読み込み直さない
     window.addEventListener("yt-navigate-finish", () => load());
     window.addEventListener("popstate", () => load());
+    // Shortsは、次の動画へ移ってもyt-navigate-finishが発火せず、URLだけが変わる
+    window.navigation?.addEventListener("navigatesuccess", () => load());
 
     getSettings()
       .then((settings) => {

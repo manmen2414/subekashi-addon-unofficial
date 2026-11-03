@@ -95,10 +95,13 @@ function getVideoId(url) {
   } else if (
     ["www.youtube.com", "m.youtube.com", "youtube.com"].includes(
       parsed.hostname,
-    ) &&
-    parsed.pathname === "/watch"
+    )
   ) {
-    videoId = parsed.searchParams.get("v");
+    if (parsed.pathname === "/watch") {
+      videoId = parsed.searchParams.get("v");
+    } else if (parsed.pathname.startsWith("/shorts/")) {
+      videoId = parsed.pathname.split("/")[2];
+    }
   }
   if (!videoId || !/^[0-9A-Za-z_\-]+$/.test(videoId)) return null;
   return videoId;
