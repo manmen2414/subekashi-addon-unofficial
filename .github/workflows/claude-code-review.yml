@@ -1,0 +1,47 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  claude-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude Code Review
+        id: claude-review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            これは「全て歌詞の所為です。」(https://lyrics.imicomweb.com) の Chrome 拡張機能（Manifest V3）です。
+            以下の観点でこのプルリクエストをレビューし、フィードバックをください。
+
+            - コードの品質・ベストプラクティスへの準拠
+            - バグ・潜在的な問題（非同期処理の競合、YouTube の画面遷移への追従、API の取得失敗時の挙動など）
+            - Chrome Web Store の審査: manifest.json の permissions・host_permissions・web_accessible_resources・content_scripts の matches が必要最小限か
+            - パフォーマンス上の懸念
+            - セキュリティ上の懸念（外部から取得した文字列を innerHTML などで HTML として挿入していないか、ページ側のスクリプトとの干渉など）
+            - テスト: このリポジトリに自動テストはなく、Playwright で拡張機能を読み込んで手動で確認している。自動テストの追加は求めず、確認が足りないと思う挙動があれば指摘してください
+
+            **レビューは必ず日本語で記述してください。**
+            リポジトリの README.md があればスタイルや規約の参考にしてください。
+            建設的かつ具体的なフィードバックをお願いします。
+
+            `gh pr comment` を Bash ツールで使用し、レビューを PR のコメントとして投稿してください。
+
+          claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'
