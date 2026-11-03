@@ -183,7 +183,7 @@ async function showToast(text, time = 3000) {
 function getTags(song) {
   /**@type {string[]} */
   const tags = [];
-  if (song.category !== "song")
+  if (song.category && song.category !== "song")
     tags.push(CATEGORY_LABELS[song.category] ?? song.category);
   if (song.prush) tags.push(song.prush);
   if (song.is_questionable) tags.push("界隈曲?");
@@ -204,7 +204,11 @@ function initReload() {
 
 async function initSettings() {
   const checkbox = $("#setting-floating-button");
-  checkbox.checked = (await getSettings()).showFloatingButton;
+  try {
+    checkbox.checked = (await getSettings()).showFloatingButton;
+  } catch {
+    checkbox.checked = DEFAULT_SETTINGS.showFloatingButton;
+  }
   checkbox.addEventListener("change", () =>
     setSetting("showFloatingButton", checkbox.checked),
   );

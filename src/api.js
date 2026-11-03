@@ -47,6 +47,7 @@ async function exponentialBackoff(path, from = "default") {
 
   for (let retry = 1; retry <= MAX_RETRY_COUNT; retry++) {
     try {
+      // host_permissionsを持たないため、すべかしの/api/がCORSを全オリジンに公開していることに依存する
       const res = await fetch(`${SUBEKASHI_URL}/api/${path}`, {
         cache: "reload",
         signal: AbortSignal.any([
@@ -118,6 +119,8 @@ const songsCache = new Map();
  * @returns {Promise<SongJson[]|undefined>}
  */
 async function fetchSongs(videoId, force = false) {
+  // 覚えている結果を使う場合も、別の動画に移ったら前の動画の取得は続けない
+  jsonControllers.song?.abort();
   const cached = songsCache.get(videoId);
   if (!force && cached && cached.expires > Date.now()) {
     return cached.songs;
