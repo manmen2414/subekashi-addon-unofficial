@@ -1,100 +1,156 @@
 /**@param {string} css */
 const $ = (css) => document.querySelector(css);
 
+/**@type {Record<string, string>} */
+const CATEGORY_LABELS = {
+  arrange: "アレンジ",
+  otomad: "音MAD",
+  medley: "メドレー",
+  omnibus: "総集編",
+  notice: "予告",
+  offv: "オフボ",
+  cover: "カバー",
+  meme: "ネタ動画",
+};
+
 /**@param {number} millsecond  */
 function timeout(millsecond) {
   return new Promise((s) => setTimeout(s, millsecond));
 }
 
 /**
- * @param {string} tabUrl
+ * 曲の情報を表示する動画のURL。YouTube上のパネルから開いたときはクエリのurl、拡張機能のボタンから開いたときは今のタブのURL
+ * @returns {Promise<string|undefined>}
  */
-async function main(tabUrl) {
-  const videoId = getVideoId(tabUrl);
+function getTabUrl() {
+  const url = new URLSearchParams(location.search).get("url");
+  if (url) return Promise.resolve(url);
+  return new Promise((resolve) => {
+    chrome.tabs.query({ active: true, lastFocusedWindow: true }, ([tab]) =>
+      resolve(tab?.url),
+    );
+  });
+}
+
+/**最後に始めた読み込みの番号。再読み込みされたら、前の読み込みの結果は捨てる */
+let loadCount = 0;
+
+/**
+ * @param {boolean} force 覚えている取得結果を使わずに取得し直す(再読み込みボタン)
+ */
+async function main(force = false) {
+  const loadId = ++loadCount;
+  resetView();
+  const tabUrl = await getTabUrl();
+  if (loadId !== loadCount) return;
+  const videoId = tabUrl ? getVideoId(tabUrl) : null;
   if (!videoId) {
     noYoutube();
     return;
   }
-  const info = $("#info");
-  info.innerText = "取得中...";
-  const res = await fetch(`${SUBEKASHI_URL}/api/song?url=${videoId}`);
-  /**@type {SongJson?} */
-  const song = (await res.json()).result[0];
-  info.innerText = "";
-  if (!song) {
-    displayRegister(tabUrl);
+  $("#info").innerText = "取得中...";
+  /**@type {SongJson[]|undefined} */
+  let songs;
+  try {
+    songs = await fetchSongs(videoId, force);
+  } catch {
+    if (loadId !== loadCount) return;
+    $("#info").innerText =
+      "曲の情報を取得できませんでした。通信状況を確認して、右上の再読み込みボタンを押してください。";
+    return;
+  }
+  // 再読み込みされ、取得がキャンセルされた
+  if (!songs || loadId !== loadCount) return;
+  $("#info").innerText = "";
+  if (songs.length === 0) {
+    displayRegister(videoId);
   } else {
-    displaySong(song);
+    songs.forEach(displaySong);
   }
 }
+
+function resetView() {
+  $("#info").innerText = "";
+  $("#songs").replaceChildren();
+  $("#regist-wrapper").hidden = true;
+  notifyPanelSize();
+}
+
+/**
+ * YouTube上のパネルの場合、歌詞を開いているときは幅を広げて高さを上限までにし、
+ * 閉じているときは高さを中身に合わせるよう親のページに伝える
+ */
+function notifyPanelSize() {
+  if (!inFrame) return;
+  const wide = !!$("details[open]");
+  parent.postMessage(
+    {
+      type: PANEL_SIZE_MESSAGE,
+      wide,
+      height: wide ? null : document.body.getBoundingClientRect().height,
+    },
+    YOUTUBE_ORIGIN,
+  );
+}
+
 /**
  * @param {SongJson} song
  */
 function displaySong(song) {
-  $("#song-wrapper").style.display = "";
+  /**@type {DocumentFragment} */
+  //@ts-ignore
+  const el = $("#song-template").content.cloneNode(true);
+  /**@param {string} css */
+  const $$ = (css) => el.querySelector(css);
+
   const url = `${SUBEKASHI_URL}/songs/${song.id}`;
-  $("#open-sbks").href = url;
-  $("#copy-sbks").onclick = () => copy(url);
-  $("#song-title-text").innerText = song.title;
-  $("#song-title-copy").addEventListener("click", () => copy(song.title));
+  $$(".song-open").href = url;
+  $$(".song-url").innerText = url.replace(/^https?:\/\//, "");
+  $$(".song-url-copy").addEventListener("click", () => copy(url));
+  $$(".song-title-text").innerText = song.title;
+  $$(".song-title-copy").addEventListener("click", () => copy(song.title));
+
   const tags = getTags(song);
-  if (tags.length === 0) $("#song-tags-wrapper").style.display = "none";
-  $("#song-tags").innerText = tags.join(",");
-  if (song.lyrics.length === 0)
-    $("#song-lyrics-wrapper").style.display = "none";
-  const lyricsToggle = $("#song-lyrics-toggle");
-  lyricsToggle.innerText = `表示(${tags.length}件)`;
-  // NOTE:そもそもトグル機能いる？
-  function showLyrics() {
-    $("#song-lyrics").innerText = song.lyrics;
-    lyricsToggle.innerText = `非表示`;
-    lyricsToggle.onclick = hideLyrics;
-  }
-  function hideLyrics() {
-    $("#song-lyrics").innerText = "";
-    lyricsToggle.innerText = `表示`;
-    lyricsToggle.onclick = showLyrics;
-  }
-  song.imitate ??= "";
-  song.imitated ??= "";
-  const imitate = song.imitate.split(",");
-  const imitatesCount = imitate[0] === "" ? 0 : imitate.length;
-  const imitated = song.imitated.split(",");
-  const imitatedCount = imitated[0] === "" ? 0 : imitated.length;
+  if (tags.length === 0) $$(".song-tags-wrapper").hidden = true;
+  $$(".song-tags").innerText = tags.join(",");
+
+  const imitatesCount = song.imitates?.length ?? 0;
+  const imitatedCount = song.imitateds?.length ?? 0;
   if (!imitatesCount && !imitatedCount)
-    $("#song-imitate-wrapper").style.display = "none";
-  if (!!imitatesCount) {
+    $$(".song-imitate-wrapper").hidden = true;
+  if (imitatesCount) {
     const imitatedStr = imitatedCount === 0 ? "" : "、";
-    $("#song-imitates").innerText = `${imitatesCount}曲を模倣し${imitatedStr}`;
+    $$(".song-imitates").innerText = `${imitatesCount}曲を模倣し${imitatedStr}`;
   }
-  if (!!imitatedCount) {
-    $("#song-imitated").innerText = `${imitatedCount}曲に模倣され`;
+  if (imitatedCount) {
+    $$(".song-imitated").innerText = `${imitatedCount}曲に模倣され`;
   }
-  hideLyrics();
+
+  if (!song.lyrics) $$(".song-lyrics-wrapper").hidden = true;
+  $$(".song-lyrics").innerText = song.lyrics;
+
+  $("#songs").append(el);
 }
-/**@param {string} url  */
-async function displayRegister(url) {
-  $("#regist-wrapper").style.display = "";
-  $("#regist-song").addEventListener("click", async () => {
-    open(`${SUBEKASHI_URL}/songs/new?url=${url}`, "_blank");
-  });
+/**@param {string} videoId  */
+function displayRegister(videoId) {
+  $("#regist-wrapper").hidden = false;
+  $("#regist-song").onclick = () => {
+    clearSongsCache(videoId);
+    open(getNewSongUrl(videoId), "_blank", "noopener");
+  };
 }
 function noYoutube() {
   $("#info").innerText = "Youtubeの再生ページを開いてください。";
 }
-/**@param {string} url  */
-function getVideoId(url) {
-  const shortLink = /http(?:s?)\:\/\/youtu\.be\/([0-9a-zA-z_\-]+)/;
-  const normalLink =
-    /http(?:s?)\:\/\/(?:www|m)\.youtube\.com\/watch\?v=([0-9a-zA-z_\-]+)/;
-  const videoIdExec = shortLink.exec(url) ?? normalLink.exec(url);
-  if (!videoIdExec) return null;
-  return videoIdExec[1];
-}
 
-function copy(text) {
-  showToast("コピーしました。", 2000);
-  navigator.clipboard.writeText(text);
+/**@param {string} text */
+async function copy(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast("コピーしました。", 2000);
+  } catch {
+    showToast("コピーできませんでした。", 2000);
+  }
 }
 /**
  * @param {string} text
@@ -121,37 +177,61 @@ async function showToast(text, time = 3000) {
   toast.remove();
 }
 /**
+ * 曲ページのタグと同じ順に並べる
  * @param {SongJson} song
  */
 function getTags(song) {
   /**@type {string[]} */
   const tags = [];
-  if (song.isdraft) tags.push("下書き");
-  if (song.isoriginal) tags.push("オリジナル模倣");
-  if (song.isjoke) tags.push("ネタ曲");
-  if (song.isinst) tags.push("インスト曲");
-  if (!song.issubeana) tags.push("非すべあな模倣曲");
-  if (song.isdeleted) tags.push("非公開/削除済み");
-  if (song.isspecial) tags.push("スペシャルデザイン");
+  if (song.category && song.category !== "song")
+    tags.push(CATEGORY_LABELS[song.category] ?? song.category);
+  if (song.prush) tags.push(song.prush);
+  if (song.is_questionable) tags.push("界隈曲?");
+  if (song.is_draft) tags.push("下書き");
+  if (song.is_original) tags.push("オリジナル模倣");
+  if (song.is_joke) tags.push("ネタ曲");
+  if (song.is_inst) tags.push("インスト曲");
+  if (!song.is_subeana && !song.is_questionable) tags.push("非すべあな模倣曲");
+  if (song.is_deleted) tags.push("非公開/削除済み");
+  if (song.is_special) tags.push("スペシャルデザイン");
+  if (song.is_limited) tags.push("限定公開");
   return tags;
 }
 
-function getTab() {
-  chrome.tabs.query({ active: true, lastFocusedWindow: true }, ([tab]) => {
-    if (!tab.url) noYoutube();
-    else main(tab.url);
-  });
+function initReload() {
+  $("#reload").onclick = () => main(true);
 }
 
-function initReload() {
-  $("#reload").onclick = () => {
-    $("#song-wrapper").display = "none";
-    $("#regist-wrapper").display = "none";
-    getTab();
-  };
+async function initSettings() {
+  const checkbox = $("#setting-floating-button");
+  try {
+    checkbox.checked = (await getSettings()).showFloatingButton;
+  } catch {
+    checkbox.checked = DEFAULT_SETTINGS.showFloatingButton;
+  }
+  checkbox.addEventListener("change", () =>
+    setSetting("showFloatingButton", checkbox.checked),
+  );
+}
+
+const inFrame = window !== window.top;
+document.documentElement.classList.toggle("in-frame", inFrame);
+
+if (inFrame) {
+  // パネル内にフォーカスがあるとEscapeは親のページに届かないため、閉じるよう伝える
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      parent.postMessage({ type: CLOSE_PANEL_MESSAGE }, YOUTUBE_ORIGIN);
+    }
+  });
+  // toggleはバブリングしないため、キャプチャで受ける
+  document.addEventListener("toggle", notifyPanelSize, true);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  // 曲を表示したときなど、中身の大きさが変わるたびに伝える
+  if (inFrame) new ResizeObserver(notifyPanelSize).observe(document.body);
   initReload();
-  getTab();
+  initSettings();
+  main();
 });

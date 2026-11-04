@@ -1,8 +1,9 @@
 {
-  "name": "全て歌詞の所為です。拡張機能【非公式】",
-  "description": "Youtubeから曲情報を閲覧・設定します",
+  "name": "全て歌詞の所為です。拡張機能",
+  "description": "YouTubeの動画が「全て歌詞の所為です。」に登録されているかを確認し、曲情報の閲覧・登録ができます",
   "version": "1.0",
   "manifest_version": 3,
+  "minimum_chrome_version": "116",
   "icons": {
     "16": "assets/icon_16.png",
     "48": "assets/icon_48.png",
@@ -22,6 +23,17 @@
         "src/config.js",
         "src/subekashi-page.js"
       ]
+    },
+    {
+      "matches": [
+        "https://www.youtube.com/*"
+      ],
+      "js": [
+        "src/config.js",
+        "src/api.js",
+        "src/settings.js",
+        "src/youtube-button.js"
+      ]
     }
   ],
   "web_accessible_resources": [
@@ -32,14 +44,19 @@
       "matches": [
         "https://lyrics.imicomweb.com/*"
       ]
+    },
+    {
+      "resources": [
+        "src/menu.html",
+        "assets/icon_128.png"
+      ],
+      "matches": [
+        "https://www.youtube.com/*"
+      ]
     }
   ],
-  "host_permissions": [
-    "https://*.youtube.com/"
-  ],
   "permissions": [
-    "tabs",
     "activeTab",
-    "scripting"
+    "storage"
   ]
 }
